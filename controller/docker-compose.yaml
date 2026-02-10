@@ -1,0 +1,62 @@
+services:
+  branding_mock:
+    image: alpine:3.19
+    # имитируем элементы брендинга: просто шлет сигнал контроллеру раз в 5 секунд
+    command: >
+      sh -c "apk add --no-cache busybox-extras >/dev/null 2>&1 || true;
+             while true; do
+               echo 'branding_ping' | nc -u -w1 controller 9000 || true;
+               sleep 5;
+             done"
+    depends_on:
+      - controller
+
+  controller:
+    image: alpine:3.19
+    # Здесь будет реальный псевдоконтроллер
+    # Сейчас заглушка-контейнер, чтобы описать инфраструктуру
+    command: >
+      sh -c "echo 'controller stub started';
+             echo 'I will talk to Kafka at $${KAFKA_BOOTSTRAP_SERVERS}';
+             tail -f /dev/null"
+    environment:
+      CONTROLLER_ID: "${CONTROLLER_ID:-ctrl-0001}"
+      CITY: "${CITY:-moscow}"
+      TELEMETRY_TOPIC: "${TELEMETRY_TOPIC:-telemetry.v1}"
+      COMMAND_TOPIC: "${COMMAND_TOPIC:-command.v1}"
+
+      # контроллер НЕ в сети infra-compose, поэтому идем через host.docker.internal
+      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-host.docker.internal:29092}"
+
+      SEND_INTERVAL_SEC: "${SEND_INTERVAL_SEC:-5}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - netem
+    # порты наружу не публикуем (NAT)
+
+  netem:
+    image: alpine:3.19
+    # netem живет в той же network namespace что и controller
+    network_mode: "service:controller"
+    cap_add:
+      - NET_ADMIN
+    environment:
+      NETEM_DELAY_MS: "${NETEM_DELAY_MS:-0}"
+      NETEM_JITTER_MS: "${NETEM_JITTER_MS:-0}"
+      NETEM_LOSS_PCT: "${NETEM_LOSS_PCT:-0}"
+    command: >
+      sh -c "apk add --no-cache iproute2 >/dev/null 2>&1 || true;
+             IFACE=eth0;
+             tc qdisc del dev $$IFACE root 2>/dev/null || true;
+             if [ \"$$NETEM_DELAY_MS\" = \"0\" ] && [ \"$$NETEM_LOSS_PCT\" = \"0\" ]; then
+               echo '[netem] no shaping applied';
+             else
+               echo \"[netem] delay=$$NETEM_DELAY_MS ms jitter=$$NETEM_JITTER_MS ms loss=$$NETEM_LOSS_PCT %\";
+               if [ \"$$NETEM_JITTER_MS\" = \"0\" ]; then
+                 tc qdisc add dev $$IFACE root netem delay $${NETEM_DELAY_MS}ms loss $${NETEM_LOSS_PCT}%;
+               else
+                 tc qdisc add dev $$IFACE root netem delay $${NETEM_DELAY_MS}ms $${NETEM_JITTER_MS}ms loss $${NETEM_LOSS_PCT}%;
+               fi;
+             fi;
+             tail -f /dev/null"
