@@ -148,3 +148,39 @@ docker compose -p ctrl_00001 --env-file .env up -d
 
 > За счёт `-p ctrl_00001` создаётся отдельная docker-сеть и изоляция как у “реально отдельного устройства”.
 
+## Скрипты массового управления контроллерами
+
+В проекте есть готовые скрипты для Powershell:
+
+- `controller-template/scripts/start-controllers.ps1` — поднимает `N` контейнеров-контроллеров, каждому генерирует свой `.env`.
+- `controller-template/scripts/stop-controllers.ps1` — останавливает все контейнеры-контроллеры (или по префиксу проекта).
+- `controller-template/scripts/list-controllers.ps1` — показывает список всех запущенных контейнеров-контроллеров.
+
+Примеры:
+
+```powershell
+powershell -File .\controller-template\scripts\start-controllers.ps1 -Count 5
+powershell -File .\controller-template\scripts\list-controllers.ps1
+powershell -File .\controller-template\scripts\stop-controllers.ps1
+```
+
+Также доступны shell-скрипты для Linux/macOS:
+
+- `controller-template/scripts/start-controllers.sh`
+- `controller-template/scripts/list-controllers.sh`
+- `controller-template/scripts/stop-controllers.sh`
+
+Примеры:
+
+```bash
+sh ./controller-template/scripts/start-controllers.sh --count 5
+sh ./controller-template/scripts/list-controllers.sh
+sh ./controller-template/scripts/stop-controllers.sh
+```
+
+С фильтром по префиксу проекта:
+
+```bash
+sh ./controller-template/scripts/list-controllers.sh --project-prefix ctrl
+sh ./controller-template/scripts/stop-controllers.sh --project-prefix ctrl
+```

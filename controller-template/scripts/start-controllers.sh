@@ -1,0 +1,184 @@
+#!/usr/bin/env sh
+
+set -eu
+
+usage() {
+  cat <<'EOF'
+Usage:
+  sh start-controllers.sh --count N [options]
+
+Options:
+  --count N                     Required. Number of controllers to start.
+  --start-index N               Default: 1
+  --project-prefix VALUE        Default: ctrl
+  --controller-id-prefix VALUE  Default: ctrl
+  --city VALUE                  Default: moscow
+  --telemetry-topic VALUE       Default: telemetry.v1
+  --command-topic VALUE         Default: command.v1
+  --kafka-bootstrap VALUE       Default: host.docker.internal:29092
+  --send-interval-sec N         Default: 5
+  --base-watts N                Default: 120
+  --noise-watts N               Default: 30
+  --netem-delay-ms N            Default: 0
+  --netem-jitter-ms N           Default: 0
+  --netem-loss-pct VALUE        Default: 0
+  --build                       Pass --build to docker compose up
+  -h, --help
+EOF
+}
+
+is_int() {
+  case "$1" in
+    ''|*[!0-9]*) return 1 ;;
+    *) return 0 ;;
+  esac
+}
+
+COUNT=""
+START_INDEX=1
+PROJECT_PREFIX="ctrl"
+CONTROLLER_ID_PREFIX="ctrl"
+CITY="moscow"
+TELEMETRY_TOPIC="telemetry.v1"
+COMMAND_TOPIC="command.v1"
+KAFKA_BOOTSTRAP_SERVERS="host.docker.internal:29092"
+SEND_INTERVAL_SEC=5
+BASE_WATTS=120
+NOISE_WATTS=30
+NETEM_DELAY_MS=0
+NETEM_JITTER_MS=0
+NETEM_LOSS_PCT=0
+BUILD=0
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --count)
+      COUNT="${2:-}"
+      shift 2
+      ;;
+    --start-index)
+      START_INDEX="${2:-}"
+      shift 2
+      ;;
+    --project-prefix)
+      PROJECT_PREFIX="${2:-}"
+      shift 2
+      ;;
+    --controller-id-prefix)
+      CONTROLLER_ID_PREFIX="${2:-}"
+      shift 2
+      ;;
+    --city)
+      CITY="${2:-}"
+      shift 2
+      ;;
+    --telemetry-topic)
+      TELEMETRY_TOPIC="${2:-}"
+      shift 2
+      ;;
+    --command-topic)
+      COMMAND_TOPIC="${2:-}"
+      shift 2
+      ;;
+    --kafka-bootstrap)
+      KAFKA_BOOTSTRAP_SERVERS="${2:-}"
+      shift 2
+      ;;
+    --send-interval-sec)
+      SEND_INTERVAL_SEC="${2:-}"
+      shift 2
+      ;;
+    --base-watts)
+      BASE_WATTS="${2:-}"
+      shift 2
+      ;;
+    --noise-watts)
+      NOISE_WATTS="${2:-}"
+      shift 2
+      ;;
+    --netem-delay-ms)
+      NETEM_DELAY_MS="${2:-}"
+      shift 2
+      ;;
+    --netem-jitter-ms)
+      NETEM_JITTER_MS="${2:-}"
+      shift 2
+      ;;
+    --netem-loss-pct)
+      NETEM_LOSS_PCT="${2:-}"
+      shift 2
+      ;;
+    --build)
+      BUILD=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+done
+
+if [ -z "$COUNT" ] || ! is_int "$COUNT" || [ "$COUNT" -lt 1 ]; then
+  echo "Error: --count must be an integer >= 1" >&2
+  exit 1
+fi
+
+if ! is_int "$START_INDEX" || [ "$START_INDEX" -lt 1 ]; then
+  echo "Error: --start-index must be an integer >= 1" >&2
+  exit 1
+fi
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Error: docker is not installed or not in PATH" >&2
+  exit 1
+fi
+
+SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+TEMPLATE_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
+COMPOSE_FILE="$TEMPLATE_DIR/docker-compose.yaml"
+ENV_DIR="$TEMPLATE_DIR/.generated-env"
+
+if [ ! -f "$COMPOSE_FILE" ]; then
+  echo "Error: compose file was not found: $COMPOSE_FILE" >&2
+  exit 1
+fi
+
+mkdir -p "$ENV_DIR"
+
+i=0
+while [ "$i" -lt "$COUNT" ]; do
+  index=$((START_INDEX + i))
+  project_name=$(printf '%s_%04d' "$PROJECT_PREFIX" "$index" | tr '[:upper:]' '[:lower:]')
+  controller_id=$(printf '%s-%04d' "$CONTROLLER_ID_PREFIX" "$index")
+  env_file="$ENV_DIR/$project_name.env"
+
+  cat >"$env_file" <<EOF
+CONTROLLER_ID=$controller_id
+CITY=$CITY
+TELEMETRY_TOPIC=$TELEMETRY_TOPIC
+COMMAND_TOPIC=$COMMAND_TOPIC
+KAFKA_BOOTSTRAP_SERVERS=$KAFKA_BOOTSTRAP_SERVERS
+SEND_INTERVAL_SEC=$SEND_INTERVAL_SEC
+BASE_WATTS=$BASE_WATTS
+NOISE_WATTS=$NOISE_WATTS
+NETEM_DELAY_MS=$NETEM_DELAY_MS
+NETEM_JITTER_MS=$NETEM_JITTER_MS
+NETEM_LOSS_PCT=$NETEM_LOSS_PCT
+EOF
+
+  if [ "$BUILD" -eq 1 ]; then
+    docker compose -f "$COMPOSE_FILE" --project-name "$project_name" --env-file "$env_file" up -d --build
+  else
+    docker compose -f "$COMPOSE_FILE" --project-name "$project_name" --env-file "$env_file" up -d
+  fi
+
+  echo "[started] project=$project_name controller_id=$controller_id env_file=$env_file"
+  i=$((i + 1))
+done
+
