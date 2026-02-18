@@ -1,4 +1,4 @@
-# `infra`
+# `infrastructure`
 
 ## Назначение
 
@@ -114,7 +114,7 @@
 
 ## Резюме сетевого доступа
 
-* Сервисы **внутри infra compose** подключаются к Kafka по:
+* Сервисы **внутри infrastructure compose** подключаются к Kafka по:
   `kafka:9092`
 
 * Контроллеры, запущенные как **отдельные docker-compose проекты**, подключаются к Kafka по:
@@ -225,7 +225,7 @@ Override содержит **только dev-специфику**:
 
 ---
 
-### Infra (Kafka + DB + UI)
+### Infrastructure (Kafka + DB + UI)
 
 * **Base**: поднимает Kafka/DB/UI в “чистой” сетевой модели (сервисы общаются по `kafka:9092`, `timescaledb:5432`)
 * **Dev override**:
