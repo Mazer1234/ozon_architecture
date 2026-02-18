@@ -139,26 +139,26 @@ Docker Compose при запуске автоматически **склеива
 
 ### Прод/переносимый режим (только Base)
 ```bash
-docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose.yaml up -d
 ````
 
 ### Dev режим (Base + Override)
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+docker compose -f docker-compose.yaml -f docker-compose.dev.yaml up -d
 ```
 
 ### Для контроллера с отдельным project name (чтобы у каждого была своя сеть)
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml -p ctrl_00001 up -d --build
+docker compose -f docker-compose.yaml -f docker-compose.dev.yaml -p ctrl_00001 up -d --build
 ```
 
 ---
 
 ## Зачем нужны Base и Override
 
-### Base compose (`docker-compose.yml`)
+### Base compose (`docker-compose.yaml`)
 
 **Цель:** описать “продукт” так, чтобы он запускался одинаково в разных окружениях.
 
@@ -170,7 +170,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml -p ctrl_00001 up 
 
 ---
 
-### Dev override compose (`docker-compose.dev.yml`)
+### Dev override compose (`docker-compose.dev.yaml`)
 
 **Цель:** добавить только то, что удобно локально и нужно именно для разработки/симуляций.
 
