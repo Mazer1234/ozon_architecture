@@ -28,6 +28,7 @@ $ErrorActionPreference = "Stop"
 $scriptsDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $templateDir = Split-Path -Parent $scriptsDir
 $composeFile = Join-Path $templateDir "docker-compose.yaml"
+$composeDevFile = Join-Path $templateDir "docker-compose.dev.yaml"
 $envDir = Join-Path $templateDir ".generated-env"
 
 if (-not (Test-Path $composeFile)) {
@@ -61,6 +62,7 @@ for ($offset = 0; $offset -lt $Count; $offset++) {
     $args = @(
         "compose"
         "-f", $composeFile
+        "-f", $composeDevFile
         "--project-name", $projectName
         "--env-file", $envFile
         "up", "-d"

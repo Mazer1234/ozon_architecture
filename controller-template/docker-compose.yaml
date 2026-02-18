@@ -8,26 +8,6 @@ services:
       CITY: "${CITY:-moscow}"
       TELEMETRY_TOPIC: "${TELEMETRY_TOPIC:-telemetry.v1}"
       COMMAND_TOPIC: "${COMMAND_TOPIC:-command.v1}"
-      KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-host.docker.internal:29092}"
-      
       SEND_INTERVAL_SEC: "${SEND_INTERVAL_SEC:-5}"
       BASE_WATTS: "${BASE_WATTS:-120}"
       NOISE_WATTS: "${NOISE_WATTS:-30}"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
-  netem:
-    image: alpine:3.19
-    # netem живет в той же network namespace что и controller
-    network_mode: "service:controller"
-    cap_add:
-      - NET_ADMIN
-    volumes:
-      - ./netem/apply.sh:/apply.sh:ro
-    depends_on:
-      - controller
-    environment:
-      NETEM_DELAY_MS: "${NETEM_DELAY_MS:-0}"
-      NETEM_JITTER_MS: "${NETEM_JITTER_MS:-0}"
-      NETEM_LOSS_PCT: "${NETEM_LOSS_PCT:-0}"
-    command: ["/bin/sh", "/apply.sh"]
