@@ -32,7 +32,7 @@
 * **телеметрию** от контроллеров (upstream),
 * **команды** к контроллерам (downstream).
 
-**Почему 2 listener’а и 2 порта**
+**Сетевой доступ в base и dev override**
 В инфраструктурном compose есть два разных “типа клиентов”:
 
 1. **внутренние сервисы инфраструктуры** (которые будут жить в этом же compose/сети)
@@ -43,11 +43,11 @@
 
 **Порты:**
 
-* `9092:9092` — “внутренний” listener (удобно и для отладки с хоста).
-* `29092:29092` — “внешний” listener для контроллеров из других docker-сетей через `host.docker.internal`.
+* В **base** порты не публикуются наружу.
+* В **dev override** добавляются `9092:9092` и `29092:29092` для локальной отладки и подключения контроллеров из других docker-сетей.
 
 **Важно:**
-В `kafka` добавлен `extra_hosts: host.docker.internal:host-gateway`, чтобы DNS-имя `host.docker.internal` работало и в Linux Docker.
+`extra_hosts: host.docker.internal:host-gateway` используется только в **dev override**.
 
 **Переменные окружения (ключевые):**
 
@@ -56,9 +56,11 @@
 
 **Listener-конфиг:**
 
-* `KAFKA_LISTENER_SECURITY_PROTOCOL_MAP="PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT"`
-* `KAFKA_LISTENERS="PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092"`
-* `KAFKA_ADVERTISED_LISTENERS="PLAINTEXT://kafka:9092,PLAINTEXT_HOST://host.docker.internal:29092"`
+* **Base**:  
+  `KAFKA_LISTENER_SECURITY_PROTOCOL_MAP="PLAINTEXT:PLAINTEXT"`  
+  `KAFKA_LISTENERS="PLAINTEXT://0.0.0.0:9092"`  
+  `KAFKA_ADVERTISED_LISTENERS="PLAINTEXT://kafka:9092"`
+* **Dev override** дополняет конфиг внешним listener (`PLAINTEXT_HOST`) и `host.docker.internal:29092`.
 * `KAFKA_INTER_BROKER_LISTENER_NAME="PLAINTEXT"`
 
 **Технические параметры для single-node:**
