@@ -126,4 +126,119 @@
 docker compose up -d
 ```
 
+# Схема base и override compose файлов
+Эта схема нужна, чтобы разделить:
+- **переносимое описание продукта** (Base compose)
+- **локальные “хаки” для разработки** (Dev override compose)
+
+Docker Compose при запуске автоматически **склеивает** файлы в один итоговый конфиг (override переопределяет/добавляет настройки к base).
+
+---
+
+## Команды запуска
+
+### Прод/переносимый режим (только Base)
+```bash
+docker compose -f docker-compose.yml up -d
+````
+
+### Dev режим (Base + Override)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+```
+
+### Для контроллера с отдельным project name (чтобы у каждого была своя сеть)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml -p ctrl_00001 up -d --build
+```
+
+---
+
+## Зачем нужны Base и Override
+
+### Base compose (`docker-compose.yml`)
+
+**Цель:** описать “продукт” так, чтобы он запускался одинаково в разных окружениях.
+
+**Что даёт:**
+
+* переносимость (CI, сервер, чужая машина)
+* минимум “магии” и привязки к локальному хосту
+* единая архитектура, близкая к реальному деплою
+
+---
+
+### Dev override compose (`docker-compose.dev.yml`)
+
+**Цель:** добавить только то, что удобно локально и нужно именно для разработки/симуляций.
+
+**Что даёт:**
+
+* удобный доступ с хоста (localhost порты)
+* имитация NAT/разных сетей контроллеров
+* netem (delay/loss) и любые привилегии, нужные для экспериментов
+* дебаг, bind-mount исходников, hot-reload и т.п.
+
+---
+
+## Что кладём в Base, а что в Override
+
+### Base compose: что должно быть внутри
+
+Base содержит **только “суть продукта”**:
+
+* **services**: kafka/mqtt/db/web/bridge/consumers/симулятор (в зависимости от части проекта)
+* **внутренние сети** (`networks`) при необходимости
+* **volumes** для хранения данных (БД и т.п.)
+* **environment** без привязки к хосту:
+
+  * адреса только по DNS сервиса внутри compose (например `kafka:9092`, `db:5432`)
+  * бизнес-параметры (topic names, лог-уровни, интервалы симуляции по умолчанию)
+* **depends_on** (только если нужно для порядка старта)
+
+Base НЕ должен содержать:
+
+* `ports:` наружу (localhost)
+* `extra_hosts: host-gateway`
+* `cap_add`, `privileged`
+* `network_mode: "service:..."` (shared netns)
+* dev-only контейнеры (netem, debug tools)
+* всё, что завязано на `host.docker.internal`
+
+---
+
+### Dev override: что должно быть внутри
+
+Override содержит **только dev-специфику**:
+
+* `ports:` пробросы на localhost (Kafka UI, DB, Kafka external listener и т.д.)
+* `extra_hosts: host.docker.internal:host-gateway` (если нужно)
+* `cap_add: NET_ADMIN`, `privileged` — если нужно для `tc/netem` или других low-level тестов
+* **netem контейнеры**
+* `network_mode: "service:controller"` (shared netns для применения tc к трафику контроллера)
+* bind-mount исходников + hot-reload
+* debug команды, профили, “удобства”
+
+---
+
+### Infra (Kafka + DB + UI)
+
+* **Base**: поднимает Kafka/DB/UI в “чистой” сетевой модели (сервисы общаются по `kafka:9092`, `timescaledb:5432`)
+* **Dev override**:
+
+  * пробрасывает порты на localhost (8080, 5432, 9092/29092)
+  * добавляет внешний listener Kafka (например `29092`) для контроллеров в отдельных docker-project сетях
+  * добавляет `host.docker.internal` при необходимости
+
+### Controller template (симулятор)
+
+* **Base**: контроллер как “продуктовый” сервис, который подключается по DNS внутри сети (например `kafka:9092`)
+* **Dev override**:
+
+  * переключает bootstrap на `host.docker.internal:29092` (чтобы контроллер в отдельной сети видел Kafka)
+  * добавляет `netem` и права `NET_ADMIN`
+  * добавляет `extra_hosts`
+
 
