@@ -1,0 +1,20 @@
+services:
+    controller:
+      extra_hosts: 
+        - "host.docker.internal:host-gateway"
+      environment:
+        KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-host.docker.internal:29092}" 
+    netem:
+      image: alpine:3.19
+      network_mode: "service:controller"
+      cap_add:
+        - NET_ADMIN
+      volumes:
+        - ./netem/apply.sh:/apply.sh:ro
+      depends_on:
+        - controller
+      environment:
+        NETEM_DELAY_MS: "${NETEM_DELAY_MS:-0}"
+        NETEM_JITTER_MS: "${NETEM_JITTER_MS:-0}"
+        NETEM_LOSS_PCT: "${NETEM_LOSS_PCT:-0}"
+      command: ["/bin/sh", "/apply.sh"]
