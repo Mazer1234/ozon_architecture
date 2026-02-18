@@ -1,24 +1,17 @@
 services:
-  zookeper:
+  zookeeper:
     image: confluentinc/cp-zookeeper:7.6.1
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     depends_on:
-      - zookeper
-    ports:
-      - "9092:9092" # для внутренних сервисов сети
-      - "29092:29092" # для контроллеров из других docker-project сетей
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - zookeeper
     environment:
       KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeper:2181
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
 
       # два листенера:
       # - PLAINTEXT - для внутренних контейнеров (kafka:9092)
@@ -38,16 +31,12 @@ services:
     image: provectuslabs/kafka-ui:v0.7.2
     depends_on:
       - kafka
-    ports:
-      - "8080:8080"
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:9092"
 
   timescaledb:
     image: timescale/timescaledb:2.25.0-pg16
-    ports:
-      - "5432:5432"
     environment:
       POSTGRES_USER: telemetry
       POSTGRES_PASSWORD: telemetry

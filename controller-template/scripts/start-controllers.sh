@@ -142,6 +142,7 @@ fi
 SCRIPT_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 TEMPLATE_DIR=$(CDPATH= cd -- "$SCRIPT_DIR/.." && pwd)
 COMPOSE_FILE="$TEMPLATE_DIR/docker-compose.yaml"
+COMPOSE_DEV_FILE="$TEMPLATE_DIR/docker-compose.dev.yaml"
 ENV_DIR="$TEMPLATE_DIR/.generated-env"
 
 if [ ! -f "$COMPOSE_FILE" ]; then
@@ -173,9 +174,9 @@ NETEM_LOSS_PCT=$NETEM_LOSS_PCT
 EOF
 
   if [ "$BUILD" -eq 1 ]; then
-    docker compose -f "$COMPOSE_FILE" --project-name "$project_name" --env-file "$env_file" up -d --build
+    docker compose -f "$COMPOSE_FILE" -f "$COMPOSE_DEV_FILE" --project-name "$project_name" --env-file "$env_file" up -d --build
   else
-    docker compose -f "$COMPOSE_FILE" --project-name "$project_name" --env-file "$env_file" up -d
+    docker compose -f "$COMPOSE_FILE" -f "$COMPOSE_DEV_FILE" --project-name "$project_name" --env-file "$env_file" up -d
   fi
 
   echo "[started] project=$project_name controller_id=$controller_id env_file=$env_file"
