@@ -22,3 +22,8 @@ services:
   timescaledb:
     ports:
       - "5432:5432"
+
+  emqx:
+    ports:
+      - "1883:1883"
+      - "18083:18083"

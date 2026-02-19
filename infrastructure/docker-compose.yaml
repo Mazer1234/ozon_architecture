@@ -68,5 +68,41 @@ services:
       retries: 10
       start_period: 15s
 
+  emqx:
+    image: emqx/emqx:5.6
+    environment:
+      # Пока что без логина
+      EMQX_ALLOW_ANONYMOUS: "true"
+      EMQX_LOG_CONSOLE_HANDLER_LEVEL: "info"
+
+  mqtt-to-kafka:
+    build:
+      context: ./bridges/mqtt-to-kafka
+    environment:
+      MQTT_HOST: emqx
+      MQTT_PORT: "1883"
+      MQTT_TOPIC: "v1/telemetry/+"
+      MQTT_QOS: "1"
+      KAFKA_BOOTSTRAP: "kafka:9092"
+      KAFKA_TOPIC: "telemetry.v1"
+    depends_on:
+      - emqx
+      - kafka
+
+  kafka-to-mqtt:
+    build:
+      context: ./bridges/kafka-to-mqtt
+    environment:
+      MQTT_HOST: emqx
+      MQTT_PORT: "1883"
+      MQTT_CMD_TOPIC_PREFIX: "v1/command"
+      MQTT_QOS: "1"
+      KAFKA_BOOTSTRAP: "kafka:9092"
+      KAFKA_TOPIC: "command.v1"
+      GROUP_ID: "kafka-to-mqtt"
+    depends_on:
+      - emqx
+      - kafka
+      
 volumes:
   timescaledb_data:
