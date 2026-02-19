@@ -3,7 +3,9 @@ services:
       extra_hosts: 
         - "host.docker.internal:host-gateway"
       environment:
-        KAFKA_BOOTSTRAP_SERVERS: "${KAFKA_BOOTSTRAP_SERVERS:-host.docker.internal:29092}" 
+        MQTT_HOST: "${MQTT_HOST:-host.docker.internal}"
+        MQTT_PORT: "${MQTT_PORT:-1883}"
+         
     netem:
       image: alpine:3.19
       network_mode: "service:controller"
