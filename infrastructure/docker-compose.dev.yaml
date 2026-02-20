@@ -14,7 +14,26 @@ services:
       KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092"
       KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092,PLAINTEXT_HOST://host.docker.internal:29092"
       KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
-    
+  
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      - kafka
+    entrypoint: ["/bin/bash", "-lc"]
+    command: >
+      "
+      echo 'waiting for kafka...';
+      cub kafka-ready -b kafka:9092 1 60 || exit 1;
+      
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic telemetry.v1 --partitions 24 --replication-factor 1;
+
+      kafka-topics --bootstrap-server kafka:9092 --alter --topic telemetry.v1 --partitions 24 || true;
+
+      kafka-topics --bootstrap-server kafka:9092 --create --if-not-exists --topic command.v1 --partitions 1 --replication-factor 1;
+
+      echo 'done';
+      "
+
   kafka-ui:
     ports:
       - "8080:8080"

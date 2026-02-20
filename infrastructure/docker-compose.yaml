@@ -30,6 +30,8 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      
     healthcheck:
       test: ["CMD-SHELL", "cub kafka-ready -b localhost:9092 1 30 || exit 1"]
       interval: 10s
@@ -86,8 +88,10 @@ services:
       KAFKA_BOOTSTRAP: "kafka:9092"
       KAFKA_TOPIC: "telemetry.v1"
     depends_on:
-      - emqx
-      - kafka
+      emqx:
+        condition: service_started
+      kafka:
+        condition: service_healthy
 
   kafka-to-mqtt:
     build:
@@ -101,8 +105,10 @@ services:
       KAFKA_TOPIC: "command.v1"
       GROUP_ID: "kafka-to-mqtt"
     depends_on:
-      - emqx
-      - kafka
+      emqx:
+        condition: service_started
+      kafka:
+        condition: service_healthy
       
 volumes:
   timescaledb_data:
