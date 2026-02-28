@@ -11,7 +11,7 @@ services:
       retries: 10
       start_period: 15s
 
-  kafka:
+  kafka1:
     image: confluentinc/cp-kafka:7.6.1
     depends_on:
       zookeeper:
@@ -22,16 +22,66 @@ services:
 
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
       KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092"
-      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka1:9092"
       KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
       
-      # для single-node dev, чтобы Kafka стартовала без репликаций
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
       
+    healthcheck:
+      test: ["CMD-SHELL", "cub kafka-ready -b localhost:9092 1 30 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+  kafka2:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+        zookeeper:
+          condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka2:9092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
+    healthcheck:
+      test: ["CMD-SHELL", "cub kafka-ready -b localhost:9092 1 30 || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+  kafka3:
+    image: confluentinc/cp-kafka:7.6.1
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://kafka3:9092"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "PLAINTEXT"
+      
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+
     healthcheck:
       test: ["CMD-SHELL", "cub kafka-ready -b localhost:9092 1 30 || exit 1"]
       interval: 10s
@@ -42,11 +92,15 @@ services:
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
     depends_on:
-      kafka:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
         condition: service_healthy
     environment:
       KAFKA_CLUSTERS_0_NAME: local
-      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka:9092"
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: "kafka1:9092,kafka2:9092,kafka3:9092"
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/actuator/health || wget --spider -q http://localhost:8080 || exit 1"]
       interval: 15s
@@ -85,14 +139,17 @@ services:
       MQTT_PORT: "1883"
       MQTT_TOPIC: "v1/telemetry/+"
       MQTT_QOS: "1"
-      KAFKA_BOOTSTRAP: "kafka:9092"
+      KAFKA_BOOTSTRAP: "kafka1:9092,kafka2:9092,kafka3:9092"
       KAFKA_TOPIC: "telemetry.v1"
     depends_on:
       emqx:
         condition: service_started
-      kafka:
+      kafka1:
         condition: service_healthy
-
+      kafka2:
+        condition: service_healthy
+      kafka3:
+        condition: service_healthy
   kafka-to-mqtt:
     build:
       context: ./bridges/kafka-to-mqtt
@@ -101,13 +158,17 @@ services:
       MQTT_PORT: "1883"
       MQTT_CMD_TOPIC_PREFIX: "v1/command"
       MQTT_QOS: "1"
-      KAFKA_BOOTSTRAP: "kafka:9092"
+      KAFKA_BOOTSTRAP: "kafka1:9092,kafka2:9092,kafka3:9092"
       KAFKA_TOPIC: "command.v1"
       GROUP_ID: "kafka-to-mqtt"
     depends_on:
       emqx:
         condition: service_started
-      kafka:
+      kafka1:
+        condition: service_healthy
+      kafka2:
+        condition: service_healthy
+      kafka3:
         condition: service_healthy
       
 volumes:
