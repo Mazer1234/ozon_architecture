@@ -13,6 +13,14 @@ param(
     [string]$TelemetryTopic = "telemetry.v1",
     [string]$CommandTopic = "command.v1",
     [string]$KafkaBootstrapServers = "host.docker.internal:29092",
+    [string]$KafkaProducerAcks = "all",
+    [string]$KafkaProducerEnableIdempotence = "true",
+    [ValidateRange(1, 1000)]
+    [int]$KafkaProducerRetries = 5,
+    [ValidateRange(1, 60000)]
+    [int]$KafkaProducerRetryBackoffMs = 100,
+    [ValidateRange(1000, 600000)]
+    [int]$KafkaProducerRequestTimeoutMs = 30000,
     [int]$SendIntervalSec = 5,
     [int]$BaseWatts = 120,
     [int]$NoiseWatts = 30,
@@ -49,6 +57,11 @@ for ($offset = 0; $offset -lt $Count; $offset++) {
         "TELEMETRY_TOPIC=$TelemetryTopic"
         "COMMAND_TOPIC=$CommandTopic"
         "KAFKA_BOOTSTRAP_SERVERS=$KafkaBootstrapServers"
+        "KAFKA_PRODUCER_ACKS=$KafkaProducerAcks"
+        "KAFKA_PRODUCER_ENABLE_IDEMPOTENCE=$KafkaProducerEnableIdempotence"
+        "KAFKA_PRODUCER_RETRIES=$KafkaProducerRetries"
+        "KAFKA_PRODUCER_RETRY_BACKOFF_MS=$KafkaProducerRetryBackoffMs"
+        "KAFKA_PRODUCER_REQUEST_TIMEOUT_MS=$KafkaProducerRequestTimeoutMs"
         "SEND_INTERVAL_SEC=$SendIntervalSec"
         "BASE_WATTS=$BaseWatts"
         "NOISE_WATTS=$NoiseWatts"

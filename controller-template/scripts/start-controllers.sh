@@ -16,6 +16,11 @@ Options:
   --telemetry-topic VALUE       Default: telemetry.v1
   --command-topic VALUE         Default: command.v1
   --kafka-bootstrap VALUE       Default: host.docker.internal:29092
+  --kafka-producer-acks VALUE   Default: all
+  --kafka-idempotence VALUE     Default: true
+  --kafka-retries N             Default: 5
+  --kafka-retry-backoff-ms N    Default: 100
+  --kafka-request-timeout-ms N  Default: 30000
   --send-interval-sec N         Default: 5
   --base-watts N                Default: 120
   --noise-watts N               Default: 30
@@ -42,6 +47,11 @@ CITY="moscow"
 TELEMETRY_TOPIC="telemetry.v1"
 COMMAND_TOPIC="command.v1"
 KAFKA_BOOTSTRAP_SERVERS="host.docker.internal:29092"
+KAFKA_PRODUCER_ACKS="all"
+KAFKA_PRODUCER_ENABLE_IDEMPOTENCE="true"
+KAFKA_PRODUCER_RETRIES=5
+KAFKA_PRODUCER_RETRY_BACKOFF_MS=100
+KAFKA_PRODUCER_REQUEST_TIMEOUT_MS=30000
 SEND_INTERVAL_SEC=5
 BASE_WATTS=120
 NOISE_WATTS=30
@@ -82,6 +92,26 @@ while [ "$#" -gt 0 ]; do
       ;;
     --kafka-bootstrap)
       KAFKA_BOOTSTRAP_SERVERS="${2:-}"
+      shift 2
+      ;;
+    --kafka-producer-acks)
+      KAFKA_PRODUCER_ACKS="${2:-}"
+      shift 2
+      ;;
+    --kafka-idempotence)
+      KAFKA_PRODUCER_ENABLE_IDEMPOTENCE="${2:-}"
+      shift 2
+      ;;
+    --kafka-retries)
+      KAFKA_PRODUCER_RETRIES="${2:-}"
+      shift 2
+      ;;
+    --kafka-retry-backoff-ms)
+      KAFKA_PRODUCER_RETRY_BACKOFF_MS="${2:-}"
+      shift 2
+      ;;
+    --kafka-request-timeout-ms)
+      KAFKA_PRODUCER_REQUEST_TIMEOUT_MS="${2:-}"
       shift 2
       ;;
     --send-interval-sec)
@@ -165,6 +195,11 @@ CITY=$CITY
 TELEMETRY_TOPIC=$TELEMETRY_TOPIC
 COMMAND_TOPIC=$COMMAND_TOPIC
 KAFKA_BOOTSTRAP_SERVERS=$KAFKA_BOOTSTRAP_SERVERS
+KAFKA_PRODUCER_ACKS=$KAFKA_PRODUCER_ACKS
+KAFKA_PRODUCER_ENABLE_IDEMPOTENCE=$KAFKA_PRODUCER_ENABLE_IDEMPOTENCE
+KAFKA_PRODUCER_RETRIES=$KAFKA_PRODUCER_RETRIES
+KAFKA_PRODUCER_RETRY_BACKOFF_MS=$KAFKA_PRODUCER_RETRY_BACKOFF_MS
+KAFKA_PRODUCER_REQUEST_TIMEOUT_MS=$KAFKA_PRODUCER_REQUEST_TIMEOUT_MS
 SEND_INTERVAL_SEC=$SEND_INTERVAL_SEC
 BASE_WATTS=$BASE_WATTS
 NOISE_WATTS=$NOISE_WATTS
@@ -182,4 +217,3 @@ EOF
   echo "[started] project=$project_name controller_id=$controller_id env_file=$env_file"
   i=$((i + 1))
 done
-
