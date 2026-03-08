@@ -29,6 +29,7 @@ Options:
   --netem-loss-pct VALUE        Default: 0
   --build                       Pass --build to docker compose up
   --cities "a b c"              Default: moscow spb kazan ekb novgorod perm rostov sochi
+  --send-interval-min N         Minutes between telemetry messages (overrides --send-interval-sec)
   -h, --help
 EOF
 }
@@ -73,6 +74,7 @@ KAFKA_PRODUCER_RETRIES=5
 KAFKA_PRODUCER_RETRY_BACKOFF_MS=100
 KAFKA_PRODUCER_REQUEST_TIMEOUT_MS=30000
 SEND_INTERVAL_SEC=5
+SEND_INTERVAL_MIN=""
 BASE_WATTS=120
 NOISE_WATTS=30
 NETEM_DELAY_MS=0
@@ -170,6 +172,10 @@ while [ "$#" -gt 0 ]; do
       CITIES="${2:-}"
       shift 2
       ;;
+    --send-interval-min)
+      SEND_INTERVAL_MIN="${2:-}"
+      shift 2
+      ;;
     *)
       echo "Unknown argument: $1" >&2
       usage >&2
@@ -186,6 +192,13 @@ fi
 if ! is_int "$START_INDEX" || [ "$START_INDEX" -lt 1 ]; then
   echo "Error: --start-index must be an integer >= 1" >&2
   exit 1
+fi
+
+if [ -n "${SEND_INTERVAL_MIN:-}" ]; then
+  if ! is_int "$SEND_INTERVAL_MIN" || [ "$SEND_INTERVAL_MIN" -lt 1 ]; then
+    echo "Error: --send-interval-min must be an integer >= 1" >&2
+    exit 1
+  fi
 fi
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -218,6 +231,12 @@ while [ "$i" -lt "$COUNT" ]; do
     city_for_controller="$CITY"
   fi
 
+  if [ -n "${SEND_INTERVAL_MIN:-}" ]; then
+    send_interval_sec_for_controller=$((SEND_INTERVAL_MIN * 60))
+  else
+    send_interval_sec_for_controller=$SEND_INTERVAL_SEC
+  fi
+
   cat >"$env_file" <<EOF
 CONTROLLER_ID=$controller_id
 CITY=$city_for_controller
@@ -229,7 +248,7 @@ KAFKA_PRODUCER_ENABLE_IDEMPOTENCE=$KAFKA_PRODUCER_ENABLE_IDEMPOTENCE
 KAFKA_PRODUCER_RETRIES=$KAFKA_PRODUCER_RETRIES
 KAFKA_PRODUCER_RETRY_BACKOFF_MS=$KAFKA_PRODUCER_RETRY_BACKOFF_MS
 KAFKA_PRODUCER_REQUEST_TIMEOUT_MS=$KAFKA_PRODUCER_REQUEST_TIMEOUT_MS
-SEND_INTERVAL_SEC=$SEND_INTERVAL_SEC
+SEND_INTERVAL_SEC=$send_interval_sec_for_controller
 BASE_WATTS=$BASE_WATTS
 NOISE_WATTS=$NOISE_WATTS
 NETEM_DELAY_MS=$NETEM_DELAY_MS
