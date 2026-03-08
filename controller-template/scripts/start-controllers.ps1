@@ -9,7 +9,8 @@ param(
 
     [string]$ProjectPrefix = "ctrl",
     [string]$ControllerIdPrefix = "ctrl",
-    [string]$City = "moscow",
+    [string]$City = "random",
+    [string[]]$Cities = @("moscow", "spb", "kazan", "ekb", "novgorod", "perm", "rostov", "sochi"),
     [string]$TelemetryTopic = "telemetry.v1",
     [string]$CommandTopic = "command.v1",
     [string]$KafkaBootstrapServers = "host.docker.internal:29092",
@@ -50,10 +51,14 @@ for ($offset = 0; $offset -lt $Count; $offset++) {
     $projectName = ("{0}_{1:D4}" -f $ProjectPrefix, $index).ToLowerInvariant()
     $controllerId = "{0}-{1:D4}" -f $ControllerIdPrefix, $index
     $envFile = Join-Path $envDir "$projectName.env"
+    $cityForController = $City
+    if ([string]::IsNullOrWhiteSpace($City) -or $City -in @("random", "__RANDOM__")) {
+        $cityForController = Get-Random -InputObject $Cities
+    }
 
     $envContent = @(
         "CONTROLLER_ID=$controllerId"
-        "CITY=$City"
+        "CITY=$cityForController"
         "TELEMETRY_TOPIC=$TelemetryTopic"
         "COMMAND_TOPIC=$CommandTopic"
         "KAFKA_BOOTSTRAP_SERVERS=$KafkaBootstrapServers"
