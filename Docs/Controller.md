@@ -156,10 +156,47 @@ docker compose -p ctrl_00001 --env-file .env up -d
 - `controller-template/scripts/stop-controllers.ps1` — останавливает все контейнеры-контроллеры (или по префиксу проекта).
 - `controller-template/scripts/list-controllers.ps1` — показывает список всех запущенных контейнеров-контроллеров.
 
+Полный список флагов (PowerShell):
+
+- `start-controllers.ps1`:
+  - `-Count` — число контроллеров
+  - `-StartIndex` — начальный индекс нумерации (по умолчанию: `1`)
+  - `-ProjectPrefix` — префикс docker-проекта (по умолчанию: `ctrl`)
+  - `-ControllerIdPrefix` — префикс `controller_id` (по умолчанию: `ctrl`)
+  - `-City` — город или `random` (по умолчанию: `random`)
+  - `-Cities` — список городов random (по умолчанию: `moscow, spb, kazan, ekb, novgorod, perm, rostov, sochi`)
+  - `-TelemetryTopic` — топик телеметрии Kafka (по умолчанию: `telemetry.v1`)
+  - `-CommandTopic` — топик команд Kafka (по умолчанию: `command.v1`)
+  - `-KafkaBootstrapServers` — bootstrap-адрес Kafka (по умолчанию: `host.docker.internal:29092`)
+  - `-KafkaProducerAcks` — режим подтверждений producer (по умолчанию: `all`)
+  - `-KafkaProducerEnableIdempotence` — включение идемпотентности producer (по умолчанию: `true`)
+  - `-KafkaProducerRetries` — число повторных отправок (по умолчанию: `5`)
+  - `-KafkaProducerRetryBackoffMs` — пауза между ретраями (по умолчанию: `100`)
+  - `-KafkaProducerRequestTimeoutMs` — таймаут запроса producer (по умолчанию: `30000`)
+  - `-SendIntervalSec` — интервал в секундах (по умолчанию: `5`)
+  - `-SendIntervalMin` — интервал в минутах (по умолчанию: не задан)
+  - `-BaseWatts` — базовая мощность нагрузки (по умолчанию: `120`)
+  - `-NoiseWatts` — амплитуда шумовой мощности (по умолчанию: `30`)
+  - `-NetemDelayMs` — сетевой delay netem (по умолчанию: `0`)
+  - `-NetemJitterMs` — сетевой jitter netem (по умолчанию: `0`)
+  - `-NetemLossPct` — процент сетевых потерь (по умолчанию: `0`)
+  - `-Build` — пересборка образов перед запуском (по умолчанию: выключен)
+- `list-controllers.ps1`:
+  - `-ProjectPrefix` — фильтр префикса проекта (по умолчанию: без фильтра)
+- `stop-controllers.ps1`:
+  - `-ProjectPrefix` — фильтр префикса проекта (по умолчанию: без фильтра)
+  - `-RemoveVolumes` — удаление томов проекта (по умолчанию: выключен)
+- Все `*.ps1`:
+  - `-Verbose` — подробный вывод команд
+  - `-Debug` — отладочный режим PowerShell
+  - `-ErrorAction` — политика обработки ошибок
+
 Примеры:
 
 ```powershell
 powershell -File .\controller-template\scripts\start-controllers.ps1 -Count 5
+powershell -File .\controller-template\scripts\start-controllers.ps1 -Count 5 -City random -Cities moscow,spb,kazan
+powershell -File .\controller-template\scripts\start-controllers.ps1 -Count 3 -SendIntervalMin 1 -KafkaProducerAcks all -KafkaProducerEnableIdempotence true
 powershell -File .\controller-template\scripts\list-controllers.ps1
 powershell -File .\controller-template\scripts\stop-controllers.ps1
 ```
@@ -170,10 +207,49 @@ powershell -File .\controller-template\scripts\stop-controllers.ps1
 - `controller-template/scripts/list-controllers.sh`
 - `controller-template/scripts/stop-controllers.sh`
 
+Полный список флагов (shell):
+
+- `start-controllers.sh`:
+  - `--count` — число контроллеров
+  - `--start-index` — начальный индекс нумерации (по умолчанию: `1`)
+  - `--project-prefix` — префикс docker-проекта (по умолчанию: `ctrl`)
+  - `--controller-id-prefix` — префикс `controller_id` (по умолчанию: `ctrl`)
+  - `--city` — город или `random` (по умолчанию: `random`)
+  - `--cities` — список городов random (по умолчанию: `moscow spb kazan ekb novgorod perm rostov sochi`)
+  - `--telemetry-topic` — топик телеметрии Kafka (по умолчанию: `telemetry.v1`)
+  - `--command-topic` — топик команд Kafka (по умолчанию: `command.v1`)
+  - `--kafka-bootstrap` — bootstrap-адрес Kafka (по умолчанию: `host.docker.internal:29092`)
+  - `--kafka-producer-acks` — режим подтверждений producer (по умолчанию: `all`)
+  - `--kafka-idempotence` — включение идемпотентности producer (по умолчанию: `true`)
+  - `--kafka-retries` — число повторных отправок (по умолчанию: `5`)
+  - `--kafka-retry-backoff-ms` — пауза между ретраями (по умолчанию: `100`)
+  - `--kafka-request-timeout-ms` — таймаут запроса producer (по умолчанию: `30000`)
+  - `--send-interval-sec` — интервал в секундах (по умолчанию: `5`)
+  - `--send-interval-min` — интервал в минутах (по умолчанию: не задан)
+  - `--base-watts` — базовая мощность нагрузки (по умолчанию: `120`)
+  - `--noise-watts` — амплитуда шумовой мощности (по умолчанию: `30`)
+  - `--netem-delay-ms` — сетевой delay netem (по умолчанию: `0`)
+  - `--netem-jitter-ms` — сетевой jitter netem (по умолчанию: `0`)
+  - `--netem-loss-pct` — процент сетевых потерь (по умолчанию: `0`)
+  - `--build` — пересборка образов перед запуском (по умолчанию: выключен)
+  - `-h` — показать справку
+  - `--help` — показать справку
+- `list-controllers.sh`:
+  - `--project-prefix` — фильтр префикса проекта (по умолчанию: без фильтра)
+  - `-h` — показать справку
+  - `--help` — показать справку
+- `stop-controllers.sh`:
+  - `--project-prefix` — фильтр префикса проекта (по умолчанию: без фильтра)
+  - `--remove-volumes` — удаление томов проекта (по умолчанию: выключен)
+  - `-h` — показать справку
+  - `--help` — показать справку
+
 Примеры:
 
 ```bash
 sh ./controller-template/scripts/start-controllers.sh --count 5
+sh ./controller-template/scripts/start-controllers.sh --count 5 --city random --cities "moscow spb kazan"
+sh ./controller-template/scripts/start-controllers.sh --count 3 --send-interval-min 1 --kafka-producer-acks all --kafka-idempotence true
 sh ./controller-template/scripts/list-controllers.sh
 sh ./controller-template/scripts/stop-controllers.sh
 ```
