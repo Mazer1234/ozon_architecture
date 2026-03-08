@@ -12,7 +12,7 @@ Options:
   --start-index N               Default: 1
   --project-prefix VALUE        Default: ctrl
   --controller-id-prefix VALUE  Default: ctrl
-  --city VALUE                  Default: moscow
+  --city VALUE                  Default: random (pick from --cities)
   --telemetry-topic VALUE       Default: telemetry.v1
   --command-topic VALUE         Default: command.v1
   --kafka-bootstrap VALUE       Default: host.docker.internal:29092
@@ -28,6 +28,8 @@ Options:
   --netem-jitter-ms N           Default: 0
   --netem-loss-pct VALUE        Default: 0
   --build                       Pass --build to docker compose up
+  --cities "a b c"              Default: moscow spb kazan ekb novgorod perm rostov sochi
+  --send-interval-min N         Minutes between telemetry messages (overrides --send-interval-sec)
   -h, --help
 EOF
 }
@@ -39,11 +41,30 @@ is_int() {
   esac
 }
 
+# Список городов для рандома
+CITIES="moscow spb kazan ekb novgorod perm rostov sochi"
+
+pick_city_for_id() {
+  id="$1"
+
+  # Число из cksum (встроено почти везде)
+  num="$(printf '%s' "$id" | cksum | awk '{print $1}')"
+
+  # Кол-во городов
+  n="$(printf '%s\n' "$CITIES" | awk '{print NF}')"
+
+  # Индекс 1..n
+  idx=$(( (num % n) + 1 ))
+
+  # Вернуть idx-й город
+  printf '%s\n' "$CITIES" | awk -v i="$idx" '{print $i}'
+}
+
 COUNT=""
 START_INDEX=1
 PROJECT_PREFIX="ctrl"
 CONTROLLER_ID_PREFIX="ctrl"
-CITY="moscow"
+CITY="random"
 TELEMETRY_TOPIC="telemetry.v1"
 COMMAND_TOPIC="command.v1"
 KAFKA_BOOTSTRAP_SERVERS="host.docker.internal:29092"
@@ -53,6 +74,7 @@ KAFKA_PRODUCER_RETRIES=5
 KAFKA_PRODUCER_RETRY_BACKOFF_MS=100
 KAFKA_PRODUCER_REQUEST_TIMEOUT_MS=30000
 SEND_INTERVAL_SEC=5
+SEND_INTERVAL_MIN=""
 BASE_WATTS=120
 NOISE_WATTS=30
 NETEM_DELAY_MS=0
@@ -146,6 +168,14 @@ while [ "$#" -gt 0 ]; do
       usage
       exit 0
       ;;
+    --cities)
+      CITIES="${2:-}"
+      shift 2
+      ;;
+    --send-interval-min)
+      SEND_INTERVAL_MIN="${2:-}"
+      shift 2
+      ;;
     *)
       echo "Unknown argument: $1" >&2
       usage >&2
@@ -162,6 +192,13 @@ fi
 if ! is_int "$START_INDEX" || [ "$START_INDEX" -lt 1 ]; then
   echo "Error: --start-index must be an integer >= 1" >&2
   exit 1
+fi
+
+if [ -n "${SEND_INTERVAL_MIN:-}" ]; then
+  if ! is_int "$SEND_INTERVAL_MIN" || [ "$SEND_INTERVAL_MIN" -lt 1 ]; then
+    echo "Error: --send-interval-min must be an integer >= 1" >&2
+    exit 1
+  fi
 fi
 
 if ! command -v docker >/dev/null 2>&1; then
@@ -188,10 +225,21 @@ while [ "$i" -lt "$COUNT" ]; do
   project_name=$(printf '%s_%04d' "$PROJECT_PREFIX" "$index" | tr '[:upper:]' '[:lower:]')
   controller_id=$(printf '%s-%04d' "$CONTROLLER_ID_PREFIX" "$index")
   env_file="$ENV_DIR/$project_name.env"
+  if [ "$CITY" = "__RANDOM__" ] || [ "$CITY" = "random" ] || [ "$CITY" = "" ]; then
+    city_for_controller="$(pick_city_for_id "$controller_id")"
+  else
+    city_for_controller="$CITY"
+  fi
+
+  if [ -n "${SEND_INTERVAL_MIN:-}" ]; then
+    send_interval_sec_for_controller=$((SEND_INTERVAL_MIN * 60))
+  else
+    send_interval_sec_for_controller=$SEND_INTERVAL_SEC
+  fi
 
   cat >"$env_file" <<EOF
 CONTROLLER_ID=$controller_id
-CITY=$CITY
+CITY=$city_for_controller
 TELEMETRY_TOPIC=$TELEMETRY_TOPIC
 COMMAND_TOPIC=$COMMAND_TOPIC
 KAFKA_BOOTSTRAP_SERVERS=$KAFKA_BOOTSTRAP_SERVERS
@@ -200,7 +248,7 @@ KAFKA_PRODUCER_ENABLE_IDEMPOTENCE=$KAFKA_PRODUCER_ENABLE_IDEMPOTENCE
 KAFKA_PRODUCER_RETRIES=$KAFKA_PRODUCER_RETRIES
 KAFKA_PRODUCER_RETRY_BACKOFF_MS=$KAFKA_PRODUCER_RETRY_BACKOFF_MS
 KAFKA_PRODUCER_REQUEST_TIMEOUT_MS=$KAFKA_PRODUCER_REQUEST_TIMEOUT_MS
-SEND_INTERVAL_SEC=$SEND_INTERVAL_SEC
+SEND_INTERVAL_SEC=$send_interval_sec_for_controller
 BASE_WATTS=$BASE_WATTS
 NOISE_WATTS=$NOISE_WATTS
 NETEM_DELAY_MS=$NETEM_DELAY_MS

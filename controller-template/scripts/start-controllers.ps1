@@ -9,7 +9,8 @@ param(
 
     [string]$ProjectPrefix = "ctrl",
     [string]$ControllerIdPrefix = "ctrl",
-    [string]$City = "moscow",
+    [string]$City = "random",
+    [string[]]$Cities = @("moscow", "spb", "kazan", "ekb", "novgorod", "perm", "rostov", "sochi"),
     [string]$TelemetryTopic = "telemetry.v1",
     [string]$CommandTopic = "command.v1",
     [string]$KafkaBootstrapServers = "host.docker.internal:29092",
@@ -22,6 +23,7 @@ param(
     [ValidateRange(1000, 600000)]
     [int]$KafkaProducerRequestTimeoutMs = 30000,
     [int]$SendIntervalSec = 5,
+    [Nullable[int]]$SendIntervalMin = $null,
     [int]$BaseWatts = 120,
     [int]$NoiseWatts = 30,
     [int]$NetemDelayMs = 0,
@@ -50,10 +52,21 @@ for ($offset = 0; $offset -lt $Count; $offset++) {
     $projectName = ("{0}_{1:D4}" -f $ProjectPrefix, $index).ToLowerInvariant()
     $controllerId = "{0}-{1:D4}" -f $ControllerIdPrefix, $index
     $envFile = Join-Path $envDir "$projectName.env"
+    $cityForController = $City
+    if ([string]::IsNullOrWhiteSpace($City) -or $City -in @("random", "__RANDOM__")) {
+        $cityForController = Get-Random -InputObject $Cities
+    }
+    $sendIntervalSecForController = $SendIntervalSec
+    if ($SendIntervalMin -ne $null) {
+        if ($SendIntervalMin -lt 1) {
+            throw "SendIntervalMin must be >= 1"
+        }
+        $sendIntervalSecForController = $SendIntervalMin * 60
+    }
 
     $envContent = @(
         "CONTROLLER_ID=$controllerId"
-        "CITY=$City"
+        "CITY=$cityForController"
         "TELEMETRY_TOPIC=$TelemetryTopic"
         "COMMAND_TOPIC=$CommandTopic"
         "KAFKA_BOOTSTRAP_SERVERS=$KafkaBootstrapServers"
@@ -62,7 +75,7 @@ for ($offset = 0; $offset -lt $Count; $offset++) {
         "KAFKA_PRODUCER_RETRIES=$KafkaProducerRetries"
         "KAFKA_PRODUCER_RETRY_BACKOFF_MS=$KafkaProducerRetryBackoffMs"
         "KAFKA_PRODUCER_REQUEST_TIMEOUT_MS=$KafkaProducerRequestTimeoutMs"
-        "SEND_INTERVAL_SEC=$SendIntervalSec"
+        "SEND_INTERVAL_SEC=$sendIntervalSecForController"
         "BASE_WATTS=$BaseWatts"
         "NOISE_WATTS=$NoiseWatts"
         "NETEM_DELAY_MS=$NetemDelayMs"

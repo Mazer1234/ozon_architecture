@@ -3,6 +3,7 @@ services:
     build:
       context: ./controller
       dockerfile: Dockerfile
+    restart: unless-stopped
     environment:
       CONTROLLER_ID: "${CONTROLLER_ID:-ctrl-0001}"
       CITY: "${CITY:-moscow}"
